@@ -532,4 +532,389 @@ with tab1:
     if st.session_state.camera_open:
 
         camera_image = st.camera_input(
-            "...
+            "Take a live photo"
+        )
+
+
+    # Use camera image if available, otherwise uploaded image
+    image_file = (
+        camera_image
+        if camera_image is not None
+        else uploaded_file
+    )
+
+
+    # --------------------------------------------------------
+    # Predict Button
+    # --------------------------------------------------------
+
+    predict_button = st.button(
+        "🔍 Predict Currency",
+        use_container_width=True
+    )
+
+
+    # --------------------------------------------------------
+    # Prediction
+    # --------------------------------------------------------
+
+    if predict_button:
+
+        if image_file is None:
+
+            st.warning(
+                "Please upload an image or take a photo first."
+            )
+
+        else:
+
+            image = Image.open(
+                image_file
+            ).convert("RGB")
+
+
+            # Display original image
+            col1, col2 = st.columns(2)
+
+
+            with col1:
+
+                st.subheader("Uploaded Image")
+
+                st.image(
+                    image,
+                    use_container_width=True
+                )
+
+
+            # ------------------------------------------------
+            # Preprocessing
+            # ------------------------------------------------
+
+            resized_image = image.resize(
+                (64, 64)
+            )
+
+            image_array = np.array(
+                resized_image
+            ) / 255.0
+
+            image_array = np.expand_dims(
+                image_array,
+                axis=0
+            )
+
+
+            # ------------------------------------------------
+            # Prediction
+            # ------------------------------------------------
+
+            with st.spinner(
+                "🔍 Analyzing currency..."
+            ):
+
+                try:
+
+                    prediction = model.predict(
+                        image_array,
+                        verbose=0
+                    )
+
+                    predicted_index = int(
+                        np.argmax(prediction[0])
+                    )
+
+                    predicted_currency = (
+                        class_names[predicted_index]
+                    )
+
+                    confidence = float(
+                        prediction[0][predicted_index]
+                        * 100
+                    )
+
+                except Exception as e:
+
+                    st.error(
+                        f"Prediction Error: {e}"
+                    )
+
+                    st.stop()
+
+
+            # ------------------------------------------------
+            # Result
+            # ------------------------------------------------
+
+            with col2:
+
+                st.subheader("Prediction Result")
+
+                icon = class_icons[
+                    predicted_currency
+                ]
+
+                st.markdown(
+                    f"""
+                    <div class="result-card">
+
+                        <div class="result-icon">
+                            {icon}
+                        </div>
+
+                        <div class="result-label">
+                            {predicted_currency}
+                        </div>
+
+                        <div class="result-confidence">
+                            {confidence:.2f}% confidence
+                        </div>
+
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+
+                st.metric(
+                    label="Confidence",
+                    value=f"{confidence:.2f}%"
+                )
+
+
+            # ------------------------------------------------
+            # Confidence Feedback
+            # ------------------------------------------------
+
+            if confidence >= 80:
+
+                st.success(
+                    "✅ The model is highly confident "
+                    "about this prediction."
+                )
+
+                st.balloons()
+
+
+            elif confidence < 50:
+
+                st.warning(
+                    "⚠️ The confidence is low. "
+                    "Try a clearer image with better lighting."
+                )
+
+
+            # ------------------------------------------------
+            # Probability Breakdown
+            # ------------------------------------------------
+
+            show_probabilities = st.checkbox(
+                "📊 Show probabilities for all classes"
+            )
+
+
+            if show_probabilities:
+
+                probabilities_df = pd.DataFrame(
+                    {
+                        "Currency": class_names,
+                        "Probability (%)": np.round(
+                            prediction[0] * 100,
+                            2
+                        )
+                    }
+                )
+
+
+                st.subheader(
+                    "All Class Probabilities"
+                )
+
+
+                st.dataframe(
+                    probabilities_df,
+                    use_container_width=True
+                )
+
+
+                st.bar_chart(
+                    probabilities_df.set_index(
+                        "Currency"
+                    )
+                )
+
+
+# ============================================================
+# TAB 2 - MODEL INFORMATION
+# ============================================================
+
+with tab2:
+
+    st.header("📊 Model Information")
+
+
+    st.markdown(
+        """
+        <div class="info-card">
+
+        <h3>About the Model</h3>
+
+        <p>
+        This project uses a Deep Learning classification model
+        to recognize Bahraini currency from an image.
+        The model predicts one of nine Bahraini currency classes.
+        </p>
+
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+    # Number of classes
+
+    st.metric(
+        "Number of Currency Classes",
+        len(class_names)
+    )
+
+
+    # Currency classes
+
+    st.subheader("💰 Currency Classes")
+
+
+    classes_table = pd.DataFrame(
+        {
+            "Class Number": range(
+                1,
+                len(class_names) + 1
+            ),
+
+            "Currency": class_names
+        }
+    )
+
+
+    st.table(
+        classes_table
+    )
+
+
+    # Model pipeline
+
+    st.subheader("🔄 Model Steps")
+
+
+    st.markdown(
+        """
+        <div class="info-card">
+
+        <p>1. Upload an image or take a photo</p>
+
+        <p>2. Convert the image to RGB</p>
+
+        <p>3. Resize the image to 224 × 224</p>
+
+        <p>4. Normalize pixel values</p>
+
+        <p>5. Add a batch dimension</p>
+
+        <p>6. Send the image to the trained model</p>
+
+        <p>7. Predict the currency class</p>
+
+        <p>8. Display the predicted currency and confidence</p>
+
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+# ============================================================
+# TAB 3 - HOW TO USE
+# ============================================================
+
+with tab3:
+
+    st.header("📖 How to Use")
+
+
+    st.markdown(
+        """
+        <div class="info-card">
+
+        <h3>Step 1</h3>
+
+        <p>
+        Upload a clear image of a Bahraini currency note or coin,
+        or use the camera to take a photo.
+        </p>
+
+        </div>
+
+
+        <div class="info-card">
+
+        <h3>Step 2</h3>
+
+        <p>
+        Click the <b>Predict Currency</b> button.
+        </p>
+
+        </div>
+
+
+        <div class="info-card">
+
+        <h3>Step 3</h3>
+
+        <p>
+        The model will display the predicted currency
+        and its confidence.
+        </p>
+
+        </div>
+
+
+        <div class="info-card">
+
+        <h3>Step 4</h3>
+
+        <p>
+        Enable <b>Show probabilities for all classes</b>
+        to see the probability for every currency class.
+        </p>
+
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+    # Tips
+
+    st.subheader("💡 Tips for Better Results")
+
+
+    st.markdown(
+        """
+        <div class="tips-text">
+
+        • Use a clear image<br>
+
+        • Make sure the currency is visible<br>
+
+        • Use good lighting<br>
+
+        • Avoid excessive blur<br>
+
+        • Use a plain background<br>
+
+        • Try different angles
+
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
