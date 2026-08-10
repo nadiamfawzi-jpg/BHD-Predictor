@@ -1,169 +1,535 @@
 import streamlit as st
-import tensorflow as tf
 import numpy as np
+import pandas as pd
 from PIL import Image
- 
-# ----------------------------------------------------------------------
-# Page setup
-# ----------------------------------------------------------------------
+from tensorflow.keras.models import load_model
+
+
+# ============================================================
+# PAGE CONFIGURATION
+# ============================================================
+
 st.set_page_config(
     page_title="Bahraini Currency Recognition",
     page_icon="💵",
-    layout="centered",
+    layout="wide"
 )
- 
-# ----------------------------------------------------------------------
-# Styling
-# ----------------------------------------------------------------------
+
+
+# ============================================================
+# STYLING
+# ============================================================
+
 st.markdown("""
 <style>
-    .main-title {
-        font-size: 2.4rem;
-        font-weight: 800;
-        text-align: center;
-        background: linear-gradient(90deg, #1b5e20, #2e7d32, #d4af37);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.1rem;
+
+    /* =========================
+       MAIN PAGE
+       ========================= */
+
+    .stApp {
+        background: linear-gradient(
+            135deg,
+            #f4f8f1 0%,
+            #ffffff 50%,
+            #eef6ed 100%
+        );
     }
+
+
+    /* =========================
+       ALL TEXT
+       ========================= */
+
+    .stMarkdown p,
+    .stMarkdown li,
+    .stText,
+    label {
+        color: #26352b !important;
+    }
+
+
+    /* =========================
+       MAIN TITLE
+       ========================= */
+
+    .main-title {
+        text-align: center;
+        color: #176b3a !important;
+        font-size: 42px;
+        font-weight: 800;
+        margin-bottom: 5px;
+    }
+
     .subtitle {
         text-align: center;
-        color: #6b7280;
-        font-size: 1.05rem;
-        margin-bottom: 1.6rem;
+        color: #536653 !important;
+        font-size: 18px;
+        margin-bottom: 30px;
     }
-    .result-card {
-        background: linear-gradient(135deg, #1b5e20, #2e7d32);
-        border-radius: 18px;
-        padding: 1.8rem;
-        text-align: center;
-        color: white;
-        box-shadow: 0 8px 24px rgba(27, 94, 32, 0.35);
-        margin: 1rem 0;
+
+
+    /* =========================
+       HEADINGS
+       ========================= */
+
+    h1,
+    h2,
+    h3,
+    h4 {
+        color: #176b3a !important;
     }
-    .result-icon { font-size: 3rem; }
-    .result-label {
-        font-size: 2rem;
+
+
+    /* =========================
+       TABS
+       ========================= */
+
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        padding: 0px 25px;
+        color: #176b3a !important;
         font-weight: 700;
-        margin-top: 0.2rem;
+        border-radius: 10px 10px 0px 0px;
     }
+
+    .stTabs [data-baseweb="tab"] p {
+        color: inherit !important;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: #176b3a !important;
+        color: white !important;
+    }
+
+    .stTabs [aria-selected="true"] p {
+        color: white !important;
+    }
+
+
+    /* =========================
+       BUTTONS
+       ========================= */
+
+    .stButton > button,
+    .stFormSubmitButton > button {
+        background: linear-gradient(
+            90deg,
+            #176b3a,
+            #2f8f57
+        ) !important;
+
+        color: white !important;
+        border: none !important;
+        border-radius: 10px;
+        font-weight: 700;
+        padding: 10px 25px;
+    }
+
+    .stButton > button p,
+    .stFormSubmitButton > button p {
+        color: white !important;
+    }
+
+    .stButton > button:hover,
+    .stFormSubmitButton > button:hover {
+        background: linear-gradient(
+            90deg,
+            #12542d,
+            #247343
+        ) !important;
+
+        color: white !important;
+    }
+
+
+    /* =========================
+       INFO CARDS
+       ========================= */
+
+    .info-card {
+        background-color: #ffffff !important;
+        color: #26352b !important;
+
+        padding: 20px;
+
+        border-radius: 15px;
+
+        border-left: 5px solid #c5a34a;
+
+        box-shadow:
+            0px 4px 12px rgba(23, 107, 58, 0.08);
+
+        margin-bottom: 20px;
+    }
+
+    .info-card h3 {
+        color: #176b3a !important;
+        margin-bottom: 10px;
+    }
+
+    .info-card p {
+        color: #26352b !important;
+        font-size: 17px;
+    }
+
+    .info-card b {
+        color: #176b3a !important;
+    }
+
+
+    /* =========================
+       RESULT CARD
+       ========================= */
+
+    .result-card {
+        background: linear-gradient(
+            135deg,
+            #176b3a,
+            #2f8f57
+        );
+
+        border-radius: 18px;
+
+        padding: 25px;
+
+        text-align: center;
+
+        color: white;
+
+        box-shadow:
+            0px 8px 24px rgba(23, 107, 58, 0.25);
+
+        margin: 15px 0;
+    }
+
+    .result-icon {
+        font-size: 50px;
+    }
+
+    .result-label {
+        font-size: 30px;
+        font-weight: 700;
+        color: white !important;
+    }
+
     .result-confidence {
-        font-size: 1.05rem;
+        font-size: 18px;
+        color: white !important;
         opacity: 0.9;
-        margin-top: 0.2rem;
     }
-    div.stButton > button {
+
+
+    /* =========================
+       METRIC
+       ========================= */
+
+    [data-testid="stMetric"] {
+        background-color: #ffffff !important;
+
+        border: 2px solid #d4e5d2;
+
         border-radius: 12px;
-        font-weight: 600;
-        border: 2px solid #2e7d32;
+
+        padding: 15px;
+
+        box-shadow:
+            0px 3px 10px rgba(23, 107, 58, 0.08);
     }
-    section[data-testid="stSidebar"] { border-right: 1px solid #e5e7eb; }
+
+    [data-testid="stMetricLabel"] {
+        color: #536653 !important;
+    }
+
+    [data-testid="stMetricLabel"] p {
+        color: #536653 !important;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: #176b3a !important;
+    }
+
+    [data-testid="stMetricValue"] div {
+        color: #176b3a !important;
+    }
+
+
+    /* =========================
+       FILE UPLOADER
+       ========================= */
+
+    [data-testid="stFileUploader"] {
+        background-color: #ffffff !important;
+        border: 2px dashed #9ab88e !important;
+        border-radius: 15px !important;
+        padding: 10px !important;
+    }
+
+    [data-testid="stFileUploader"] section {
+        background-color: #ffffff !important;
+        border: none !important;
+    }
+
+    [data-testid="stFileUploader"] section > div {
+        background-color: #ffffff !important;
+    }
+
+    [data-testid="stFileUploader"] label {
+        color: #26352b !important;
+    }
+
+    [data-testid="stFileUploader"] small {
+        color: #536653 !important;
+    }
+
+    [data-testid="stFileUploader"] button {
+        background-color: #f4f8f1 !important;
+        color: #176b3a !important;
+        border: 1px solid #9ab88e !important;
+    }
+
+    [data-testid="stFileUploader"] button span {
+        color: #176b3a !important;
+    }
+
+    [data-testid="stFileUploader"] p {
+        color: #26352b !important;
+    }
+
+
+    /* =========================
+       CHECKBOX
+       ========================= */
+
+    [data-testid="stCheckbox"] label {
+        color: #26352b !important;
+    }
+
+    [data-testid="stCheckbox"] p {
+        color: #26352b !important;
+    }
+
+
+    /* =========================
+       TABLE
+       ========================= */
+
+    [data-testid="stTable"] {
+        background-color: #ffffff !important;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    [data-testid="stTable"] table {
+        background-color: #ffffff !important;
+    }
+
+    [data-testid="stTable"] th {
+        background-color: #176b3a !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+    }
+
+    [data-testid="stTable"] th * {
+        color: #ffffff !important;
+    }
+
+    [data-testid="stTable"] td {
+        background-color: #ffffff !important;
+        color: #26352b !important;
+    }
+
+    [data-testid="stTable"] td * {
+        color: #26352b !important;
+    }
+
+
+    /* =========================
+       TIPS
+       ========================= */
+
+    .tips-text {
+        color: #26352b !important;
+        font-size: 17px;
+        line-height: 1.9;
+    }
+
+    .tips-text p {
+        color: #26352b !important;
+    }
+
+
+    /* =========================
+       ALERTS
+       ========================= */
+
+    [data-testid="stAlert"] {
+        border-radius: 12px;
+    }
+
 </style>
 """, unsafe_allow_html=True)
- 
-st.markdown('<div class="main-title">💵 Bahraini Currency Recognition</div>',
-            unsafe_allow_html=True)
-st.markdown(
-    '<div class="subtitle">Snap or upload a photo and let the model '
-    'identify the note or coin</div>',
-    unsafe_allow_html=True)
- 
-# ----------------------------------------------------------------------
-# Model
-# ----------------------------------------------------------------------
-@st.cache_resource
-def load_model():
-    return tf.keras.models.load_model("currency_0model.keras")
- 
-model = load_model()
- 
-class_names = ["0.05", "0.100", "0.25", "0.5 BD", "0.50",
-               "1BD", "5 BD", "10 BD", "20 BD"]
- 
-# a simple coin/note icon per class, purely cosmetic
+
+
+# ============================================================
+# CLASS NAMES
+# ============================================================
+
+class_names = [
+    "5 fils",
+    "25 fils",
+    "50 fils",
+    "100 fils",
+    "BD 0.5",
+    "BD 1",
+    "BD 5",
+    "BD 10",
+    "BD 20"
+]
+
+
+# Icons for each currency class
 class_icons = {
-    "0.05": "🪙", "0.100": "🪙", "0.25": "🪙", "0.50": "🪙",
-    "0.5 BD": "💵", "1BD": "💵", "5 BD": "💵", "10 BD": "💵", "20 BD": "💵",
+    "5 fils": "🪙",
+    "25 fils": "🪙",
+    "50 fils": "🪙",
+    "100 fils": "🪙",
+    "BD 0.5": "💵",
+    "BD 1": "💵",
+    "BD 5": "💵",
+    "BD 10": "💵",
+    "BD 20": "💵"
 }
- 
-# ----------------------------------------------------------------------
-# Sidebar
-# ----------------------------------------------------------------------
+
+
+# ============================================================
+# LOAD MODEL
+# ============================================================
+
+@st.cache_resource
+def load_currency_model():
+    return load_model("currency_5model.keras")
+
+
+model = load_currency_model()
+
+
+# ============================================================
+# MAIN HEADER
+# ============================================================
+
+st.markdown(
+    '<div class="main-title">💵 Bahraini Currency Recognition</div>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    '<div class="subtitle">'
+    'Deep Learning Currency Classification System'
+    '</div>',
+    unsafe_allow_html=True
+)
+
+
+# ============================================================
+# SIDEBAR
+# ============================================================
+
 with st.sidebar:
+
     st.header("ℹ️ About")
+
     st.write(
-        "This app identifies Bahraini currency (coins and notes) from a "
-        "photo using a trained neural network.")
- 
+        "This app identifies Bahraini currency coins and notes "
+        "from an image using a trained Deep Learning model."
+    )
+
     st.header("💱 Denominations")
+
     for name in class_names:
         st.write(f"{class_icons[name]}  {name}")
- 
-    st.header("📸 Tips for best results")
+
+    st.header("📸 Tips for Best Results")
+
     st.write(
         "- Fill most of the frame with the currency\n"
-        "- Use a plain, uncluttered background\n"
-        "- Good, even lighting helps")
- 
-# ----------------------------------------------------------------------
-# Image input: upload, or open/close the camera
-# ----------------------------------------------------------------------
-if "camera_open" not in st.session_state:
-    st.session_state.camera_open = False
- 
-col1, col2 = st.columns(2)
-with col1:
-    uploaded_image = st.file_uploader(
-        "📁 Upload a photo", type=["jpg", "jpeg", "png"])
-with col2:
-    st.write("")  # small vertical spacer to align the button with the uploader
-    label = "✖️ Close Camera" if st.session_state.camera_open else "📷 Open Camera"
-    if st.button(label, use_container_width=True):
-        st.session_state.camera_open = not st.session_state.camera_open
- 
-camera_image = None
-if st.session_state.camera_open:
-    camera_image = st.camera_input("Take a live photo")
- 
-image_file = camera_image if camera_image is not None else uploaded_image
- 
-# ----------------------------------------------------------------------
-# Prediction
-# ----------------------------------------------------------------------
-if image_file is not None:
-    image = Image.open(image_file).convert("RGB")
-    st.image(image, caption="Your photo", use_container_width=True)
- 
-    with st.spinner("🔍 Analyzing currency..."):
-        model_input = image.resize((64, 64))
-        model_input = np.array(model_input) / 255
-        model_input = np.expand_dims(model_input, axis=0)
-        prediction = model.predict(model_input, verbose=0)
- 
-    predicted_class = np.argmax(prediction)
-    confidence = float(prediction[0][predicted_class])
-    name = class_names[predicted_class]
-    icon = class_icons[name]
- 
-    st.markdown(f"""
-    <div class="result-card">
-        <div class="result-icon">{icon}</div>
-        <div class="result-label">{name}</div>
-        <div class="result-confidence">{confidence:.0%} confidence</div>
-    </div>
-    """, unsafe_allow_html=True)
- 
-    if confidence >= 0.8:
-        st.balloons()
-    elif confidence < 0.5:
-        st.warning(
-            "⚠️ Low confidence - the model isn't sure about this one.")
- 
-    with st.expander("📊 Show full prediction breakdown"):
-        probs = {
-            f"{class_icons[class_names[i]]} {class_names[i]}": float(prediction[0][i])
-            for i in range(len(class_names))}
-        st.bar_chart(probs)
- 
-else:
-    st.info("👆 Upload a photo or open the camera to get started.")
+        "- Use a plain background\n"
+        "- Use good, even lighting\n"
+        "- Avoid blurry images"
+    )
+
+
+# ============================================================
+# TABS
+# ============================================================
+
+tab1, tab2, tab3 = st.tabs(["💵 Recognize Currency",
+                            "📊 Model Information",
+                            "📖 How to Use"])
+
+
+# ============================================================
+# TAB 1 - RECOGNIZE CURRENCY
+# ============================================================
+
+with tab1:
+
+    st.header("💵 Recognize Bahraini Currency")
+
+    st.write(
+        "Upload an image or use the camera and let the Deep Learning "
+        "model identify the currency."
+    )
+
+
+    # --------------------------------------------------------
+    # Image Input
+    # --------------------------------------------------------
+
+    if "camera_open" not in st.session_state:
+        st.session_state.camera_open = False
+
+
+    col1, col2 = st.columns(2)
+
+
+    with col1:
+
+        uploaded_file = st.file_uploader(
+            "📁 Upload a currency image",
+            type=["jpg", "jpeg", "png"]
+        )
+
+
+    with col2:
+
+        st.write("")
+
+        camera_label = (
+            "✖️ Close Camera"
+            if st.session_state.camera_open
+            else "📷 Open Camera"
+        )
+
+        if st.button(
+            camera_label,
+            use_container_width=True
+        ):
+
+            st.session_state.camera_open = (
+                not st.session_state.camera_open
+            )
+
+
+    camera_image = None
+
+
+    if st.session_state.camera_open:
+
+        camera_image = st.camera_input(
+            "...
