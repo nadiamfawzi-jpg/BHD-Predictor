@@ -73,7 +73,7 @@ st.markdown(
 # ----------------------------------------------------------------------
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("currency_5model.keras")
+    return tf.keras.models.load_model("currency_0model.keras")
  
 model = load_model()
  
