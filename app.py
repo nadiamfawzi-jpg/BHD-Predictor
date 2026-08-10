@@ -69,7 +69,7 @@ st.markdown(
     unsafe_allow_html=True)
  
 # ----------------------------------------------------------------------
-# Model (cached so it only loads once, not on every interaction)
+# Model
 # ----------------------------------------------------------------------
 @st.cache_resource
 def load_model():
